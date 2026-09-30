@@ -42,4 +42,23 @@ function devScraperPlugin() {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), devScraperPlugin()],
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        // rolldown (Vite 8) requires manualChunks as a function
+        manualChunks(id) {
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'vendor-react'
+          }
+          if (id.includes('node_modules/firebase') || id.includes('node_modules/@firebase')) {
+            return 'vendor-firebase'
+          }
+          if (id.includes('node_modules/leaflet')) {
+            return 'vendor-leaflet'
+          }
+        },
+      },
+    },
+  },
 })

@@ -60,8 +60,9 @@ export default function PropertyMap({
     locatableProperties.forEach(p => {
       const { lat, lng } = p.location
       const statusKey = p.status || 'uncalled'
-      const cfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG.uncalled
+      const cfg = STATUS_CONFIG[statusKey] || STATUS_CONFIG['uncalled']
       const isFinalist = !!p.finalist
+      const isUnviewed = !p.viewedBy?.some(v => v.uid === currentUser?.uid)
 
       // Custom marker HTML
       const markerHtml = `
@@ -100,6 +101,19 @@ export default function PropertyMap({
               box-shadow: 0 2px 5px rgba(0,0,0,0.3);
             ">★</span>
           ` : ''}
+          ${isUnviewed ? `
+            <span style="
+              position: absolute;
+              top: -5px;
+              left: -5px;
+              background: linear-gradient(135deg, #2563EB, #7C3AED);
+              border: 2px solid #FFFFFF;
+              border-radius: 50%;
+              width: 13px;
+              height: 13px;
+              box-shadow: 0 0 8px rgba(37,99,235,0.85);
+            "></span>
+          ` : ''}
         </div>
       `
 
@@ -131,7 +145,7 @@ export default function PropertyMap({
     return () => {
       // Don't destroy map on every render, only cleanup markers
     }
-  }, [properties])
+  }, [locatableProperties, currentUser])
 
   // Cleanup map when component unmounts entirely
   useEffect(() => {
@@ -240,6 +254,13 @@ export default function PropertyMap({
 
             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
+                {!selectedProperty.viewedBy?.some(v => v.uid === currentUser?.uid) && (
+                  <div style={{ marginBottom: 4 }}>
+                    <span className="badge-unviewed" style={{ fontSize: '0.68rem', padding: '2px 7px' }}>
+                      Nuevo para vos
+                    </span>
+                  </div>
+                )}
                 <h4 style={{
                   margin: 0,
                   fontSize: '0.95rem',

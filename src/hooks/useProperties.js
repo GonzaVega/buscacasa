@@ -43,15 +43,15 @@ export function useProperties(user) {
 
   const userInfo = () => ({
     uid:         user.uid,
-    displayName: user.displayName || user.email.split('@')[0],
-    email:       user.email,
+    displayName: user.displayName || user.email?.split('@')[0] || 'Usuario',
+    email:       user.email || '',
   })
 
   const addProperty = async (data) =>
     addDoc(collection(db, 'properties'), {
       ...data,
       finalist: false,
-      viewedBy: [],
+      viewedBy: [userInfo()],
       createdBy:  userInfo(),
       createdAt:  serverTimestamp(),
       updatedAt:  serverTimestamp(),
@@ -64,9 +64,10 @@ export function useProperties(user) {
       updatedBy: userInfo(),
     })
 
-  const deleteProperty = async (id) =>
+  // eslint-disable-next-line no-unused-vars
+  const deleteProperty = async (id, _photos) =>
     // Note: Cloudinary photos stay in the cloud (unsigned preset can't delete).
-    // For a short-term app this is fine — free tier has plenty of space.
+    // Free tier has ample space for this use-case.
     deleteDoc(doc(db, 'properties', id))
 
   // Upload a photo to Cloudinary and return the public URL

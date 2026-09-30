@@ -19,7 +19,14 @@ export default function App() {
   const [editingProp, setEditingProp] = useState(null)
 
   const openNew  = () => { setEditingProp(null); setModalOpen(true) }
-  const openEdit = useCallback((property) => { setEditingProp(property); setModalOpen(true) }, [])
+  const openEdit = useCallback((property) => {
+    setEditingProp(property)
+    setModalOpen(true)
+    const iViewed = property.viewedBy?.some(v => v.uid === user?.uid)
+    if (!iViewed && property.id) {
+      markViewed(property.id, false)
+    }
+  }, [user, markViewed])
   const closeModal = () => { setModalOpen(false); setEditingProp(null) }
 
   const handleSave = async (formData) => {
@@ -75,6 +82,7 @@ export default function App() {
   }
 
   const displayName = user.displayName || user.email?.split('@')[0] || 'vos'
+  const unviewedCount = properties.filter(p => !p.viewedBy?.some(v => v.uid === user.uid)).length
 
   return (
     <>
@@ -92,8 +100,21 @@ export default function App() {
               ({properties.length})
             </span>
           </h1>
-          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0 }}>
-            Hola, {displayName.split(' ')[0]} 👋
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span>Hola, {displayName.split(' ')[0]} 👋</span>
+            {unviewedCount > 0 && (
+              <span style={{
+                background: 'rgba(37,99,235,0.2)',
+                color: '#93C5FD',
+                padding: '2px 8px',
+                borderRadius: 99,
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                border: '1px solid rgba(59,130,246,0.3)',
+              }}>
+                {unviewedCount} sin revisar
+              </span>
+            )}
           </p>
         </div>
 

@@ -149,6 +149,8 @@ export default function PropertyModal({ property, onClose, onSave, onDelete, upl
     } else {
       setForm(EMPTY_FORM)
     }
+    // Reset delete confirmation whenever modal reopens with a different property
+    setConfirmDelete(false)
   }, [property])
 
   // Close on Escape
@@ -362,6 +364,7 @@ export default function PropertyModal({ property, onClose, onSave, onDelete, upl
                   const pasted = e.clipboardData?.getData('text')?.trim() || ''
                   if (pasted.startsWith('http')) {
                     set('url', pasted)
+                    // Pass pasted value directly — state update is async
                     if (!form.title) {
                       setTimeout(() => scrapeUrl(pasted), 60)
                     }

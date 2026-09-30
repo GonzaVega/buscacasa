@@ -63,10 +63,6 @@ export default function Header({ user, onLogout, onNewProperty }) {
           </button>
         </div>
       </div>
-
-      <style>{`
-        @media (max-width: 400px) { .hide-xs { display: none; } }
-      `}</style>
     </header>
   )
 }

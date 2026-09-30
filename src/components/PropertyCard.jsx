@@ -5,6 +5,7 @@ import UserAvatar from './UserAvatar'
 const STATUS_ORDER = ['uncalled', 'contacted', 'visited', 'candidate', 'discarded']
 
 function formatPhone(phone) {
+  if (!phone) return null
   const digits = phone.replace(/\D/g, '')
   if (digits.startsWith('54')) return digits
   if (digits.startsWith('0'))  return '549' + digits.slice(1)
@@ -35,8 +36,10 @@ function ViewedByRow({ viewedBy = [], currentUser, onToggle }) {
           </span>
         </div>
       ))}
-      {viewedBy.length === 2 && (
-        <span style={{ fontSize: '0.7rem', color: 'var(--green)', fontWeight: 600 }}>👀 Los dos</span>
+      {viewedBy.length >= 2 && (
+        <span style={{ fontSize: '0.7rem', color: 'var(--green)', fontWeight: 600 }}>
+          👀 {viewedBy.length === 2 ? 'Los dos' : `Los ${viewedBy.length}`}
+        </span>
       )}
       <button
         type="button"
@@ -45,13 +48,14 @@ function ViewedByRow({ viewedBy = [], currentUser, onToggle }) {
         style={{
           fontSize: '0.68rem',
           padding: '3px 8px',
-          background: iViewed ? 'var(--blue-dim)' : 'var(--bg-card-hover)',
-          color: iViewed ? 'var(--blue)' : 'var(--text-muted)',
-          border: `1px solid ${iViewed ? 'rgba(59,130,246,0.3)' : 'var(--border)'}`,
+          background: iViewed ? 'var(--blue-dim)' : 'linear-gradient(135deg, rgba(37,99,235,0.22), rgba(124,58,237,0.22))',
+          color: iViewed ? 'var(--blue)' : '#93C5FD',
+          border: `1px solid ${iViewed ? 'rgba(59,130,246,0.3)' : 'rgba(147,197,253,0.45)'}`,
+          fontWeight: iViewed ? 500 : 700,
         }}
         title={iViewed ? 'Quitar mi marca de vista' : 'Marcar que ya la vi'}
       >
-        {iViewed ? '✔ Ya la vi' : '+ Ya la vi'}
+        {iViewed ? '✔ Ya la vi' : '👀 Marcar vista'}
       </button>
     </div>
   )
@@ -79,12 +83,12 @@ export default function PropertyCard({ property, onEdit, onStatusChange, onMarkV
       style={{
         display: 'flex',
         flexDirection: 'column',
-        border: finalist
-          ? '1.5px solid rgba(245,166,35,0.5)'
-          : '1px solid var(--border)',
-        boxShadow: finalist
-          ? '0 4px 24px rgba(245,166,35,0.12)'
-          : 'var(--shadow-card)',
+        border: !iViewed
+          ? '1.5px solid rgba(96, 165, 250, 0.45)'
+          : (finalist ? '1.5px solid rgba(245,166,35,0.5)' : '1px solid var(--border)'),
+        boxShadow: !iViewed
+          ? '0 4px 20px rgba(37, 99, 235, 0.16)'
+          : (finalist ? '0 4px 24px rgba(245,166,35,0.12)' : 'var(--shadow-card)'),
       }}
       id={`property-${property.id}`}
     >
@@ -118,9 +122,26 @@ export default function PropertyCard({ property, onEdit, onStatusChange, onMarkV
           }}>📷 {photos.length}</span>
         )}
 
-        {/* Status badge top-left */}
-        <div style={{ position: 'absolute', top: 10, left: 10 }}>
+        {/* Badges top-left */}
+        <div style={{ position: 'absolute', top: 10, left: 10, display: 'flex', gap: 6, alignItems: 'center', zIndex: 2 }}>
           <StatusBadge status={status || 'uncalled'} />
+          {!iViewed && (
+            <span
+              className="badge-unviewed"
+              title="Aún no revisaste esta propiedad"
+            >
+              <span style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: '#93C5FD',
+                boxShadow: '0 0 6px #60A5FA',
+                animation: 'pulseGlow 1.8s infinite',
+                display: 'inline-block',
+              }} />
+              Nuevo
+            </span>
+          )}
         </div>
 
         {/* Finalist star top-right */}
@@ -287,10 +308,6 @@ export default function PropertyCard({ property, onEdit, onStatusChange, onMarkV
         </div>
       </div>
 
-      <style>{`
-        article:hover .photo-overlay { background: rgba(0,0,0,0.25) !important; }
-        article:hover .overlay-label { opacity: 1 !important; }
-      `}</style>
     </article>
   )
 }

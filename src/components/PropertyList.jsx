@@ -22,15 +22,28 @@ export default function PropertyList({
   const [sort, setSort]                 = useState('newest')
   const [viewMode, setViewMode]         = useState('cards') // 'cards' | 'map'
 
+  const unviewedCount = useMemo(() => {
+    return properties.filter(p => !p.viewedBy?.some(v => v.uid === currentUser?.uid)).length
+  }, [properties, currentUser])
+
   const finalists = useMemo(
-    () => properties.filter(p => p.finalist && (p.status || 'uncalled') !== 'discarded'),
-    [properties]
+    () => properties.filter(p => {
+      if (!p.finalist) return false
+      if ((p.status || 'uncalled') === 'discarded') return false
+      if (filterStatus === 'unviewed') {
+        return !p.viewedBy?.some(v => v.uid === currentUser?.uid)
+      }
+      return true
+    }),
+    [properties, filterStatus, currentUser]
   )
 
   const filtered = useMemo(() => {
     let list = properties.filter(p => !p.finalist) // finalists shown separately above
 
-    if (filterStatus !== 'all') {
+    if (filterStatus === 'unviewed') {
+      list = list.filter(p => !p.viewedBy?.some(v => v.uid === currentUser?.uid))
+    } else if (filterStatus !== 'all') {
       list = list.filter(p => (p.status || 'uncalled') === filterStatus)
     }
 
@@ -49,13 +62,14 @@ export default function PropertyList({
       if (sort === 'price_desc') return (Number(b.price) || 0) - (Number(a.price) || 0)
       if (sort === 'rating')     return (b.rating || 0) - (a.rating || 0)
       if (sort === 'oldest')     return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)
-      return 0 // newest = Firestore default
+      // newest: descending by createdAt
+      return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
     })
 
     return list
-  }, [properties, filterStatus, search, sort])
+  }, [properties, filterStatus, search, sort, currentUser])
 
-  // Count by status (excluding finalists from counts)
+  // Count by status (non-finalist only, matches the main grid)
   const counts = useMemo(() => {
     const nonFinalists = properties.filter(p => !p.finalist)
     const map = { all: nonFinalists.length }
@@ -69,7 +83,9 @@ export default function PropertyList({
   // All matching properties for the map view (finalists + filtered)
   const mapProperties = useMemo(() => {
     let list = properties
-    if (filterStatus !== 'all') {
+    if (filterStatus === 'unviewed') {
+      list = list.filter(p => !p.viewedBy?.some(v => v.uid === currentUser?.uid))
+    } else if (filterStatus !== 'all') {
       list = list.filter(p => (p.status || 'uncalled') === filterStatus)
     }
     if (search.trim()) {
@@ -82,7 +98,7 @@ export default function PropertyList({
       )
     }
     return list
-  }, [properties, filterStatus, search])
+  }, [properties, filterStatus, search, currentUser])
 
   const cardProps = (p) => ({
     property: p,
@@ -196,8 +212,62 @@ export default function PropertyList({
         display: 'flex', gap: 8, overflowX: 'auto',
         paddingBottom: 12, scrollbarWidth: 'none',
       }}>
-        {ALL_STATUSES.map(s => {
-          const cfg    = s === 'all' ? null : STATUS_CONFIG[s]
+        {/* Todas button */}
+        <button
+          type="button"
+          onClick={() => setFilterStatus('all')}
+          className="btn btn-sm"
+          id="filter-all"
+          style={{
+            flexShrink: 0,
+            background: filterStatus === 'all' ? 'var(--accent-dim)' : 'var(--bg-card)',
+            color: filterStatus === 'all' ? 'var(--accent)' : 'var(--text-secondary)',
+            border: `1px solid ${filterStatus === 'all' ? 'var(--accent)' : 'var(--border)'}`,
+            fontWeight: filterStatus === 'all' ? 700 : 500,
+          }}
+        >
+          🏘️ Todas
+          {properties.length > 0 && (
+            <span style={{
+              background: filterStatus === 'all' ? 'rgba(255,255,255,0.2)' : 'var(--bg-card-hover)',
+              borderRadius: 99, padding: '1px 6px', fontSize: '0.7rem', marginLeft: 2,
+            }}>{properties.length}</span>
+          )}
+        </button>
+
+        {/* Sin ver (Inbox) button */}
+        <button
+          type="button"
+          onClick={() => setFilterStatus(filterStatus === 'unviewed' ? 'all' : 'unviewed')}
+          className="btn btn-sm"
+          id="filter-unviewed"
+          style={{
+            flexShrink: 0,
+            background: filterStatus === 'unviewed'
+              ? 'linear-gradient(135deg, rgba(37,99,235,0.35), rgba(124,58,237,0.35))'
+              : (unviewedCount > 0 ? 'rgba(37,99,235,0.12)' : 'var(--bg-card)'),
+            color: filterStatus === 'unviewed' ? '#93C5FD' : (unviewedCount > 0 ? '#60A5FA' : 'var(--text-secondary)'),
+            border: filterStatus === 'unviewed'
+              ? '1px solid rgba(147,197,253,0.6)'
+              : (unviewedCount > 0 ? '1px solid rgba(59,130,246,0.4)' : 'var(--border)'),
+            fontWeight: filterStatus === 'unviewed' || unviewedCount > 0 ? 700 : 500,
+          }}
+        >
+          📬 Sin ver
+          {unviewedCount > 0 && (
+            <span style={{
+              background: filterStatus === 'unviewed' ? '#2563EB' : 'rgba(37,99,235,0.3)',
+              color: '#ffffff',
+              borderRadius: 99, padding: '1px 6px', fontSize: '0.7rem', marginLeft: 3,
+              boxShadow: unviewedCount > 0 ? '0 0 8px rgba(59,130,246,0.6)' : 'none',
+              fontWeight: 700,
+            }}>{unviewedCount}</span>
+          )}
+        </button>
+
+        {/* Status specific buttons */}
+        {ALL_STATUSES.filter(s => s !== 'all').map(s => {
+          const cfg    = STATUS_CONFIG[s]
           const active = filterStatus === s
           const count  = counts[s] || 0
           return (
@@ -219,7 +289,7 @@ export default function PropertyList({
                 fontWeight: active ? 700 : 500,
               }}
             >
-              {cfg ? `${cfg.icon} ${cfg.label}` : '🏘️ Todas'}
+              {cfg?.icon} {cfg?.label}
               {count > 0 && (
                 <span style={{
                   background: active ? 'rgba(255,255,255,0.2)' : 'var(--bg-card-hover)',
@@ -300,19 +370,23 @@ export default function PropertyList({
           {filtered.length === 0 && (
             <div style={{ textAlign: 'center', padding: '56px 24px', color: 'var(--text-muted)' }}>
               <div style={{ fontSize: 52, marginBottom: 14 }}>
-                {search ? '🔍' : filterStatus !== 'all' ? STATUS_CONFIG[filterStatus]?.icon : '🏠'}
+                {search ? '🔍' : filterStatus === 'unviewed' ? '🎉' : filterStatus !== 'all' ? STATUS_CONFIG[filterStatus]?.icon : '🏠'}
               </div>
               <h3 style={{ color: 'var(--text-secondary)', marginBottom: 8 }}>
                 {search
                   ? 'No hay resultados'
-                  : filterStatus !== 'all'
-                    ? `Ninguna en "${STATUS_CONFIG[filterStatus]?.label}"`
-                    : 'Todavía no hay propiedades'}
+                  : filterStatus === 'unviewed'
+                    ? '¡Todo visto! No tenés publicaciones pendientes 🎉'
+                    : filterStatus !== 'all'
+                      ? `Ninguna en "${STATUS_CONFIG[filterStatus]?.label}"`
+                      : 'Todavía no hay propiedades'}
               </h3>
               <p style={{ fontSize: '0.875rem' }}>
                 {properties.length === 0
                   ? 'Usá el botón "+" para empezar a guardar opciones.'
-                  : 'Probá con otro filtro o búsqueda.'}
+                  : filterStatus === 'unviewed'
+                    ? 'Cada vez que tu pareja agregue una propiedad nueva, te aparecerá acá.'
+                    : 'Probá con otro filtro o búsqueda.'}
               </p>
             </div>
           )}
